@@ -1,7 +1,25 @@
 use strict;
 use ExtUtils::MakeMaker;
 
-# $Id: Makefile.PL,v 1.9 2004/12/07 12:36:21 rs Exp $
+# $Id: Makefile.PL,v 1.13 2004/12/08 01:11:24 rs Exp $
+
+if(!eval {require RRDs; 1})
+{
+    $| = 1;
+    print <<EOT;
+The RRDs perl library seems not installed on your system. This module
+can't work without this library. You can download this library on the
+following URL: http://rrdtool.cs.pu.edu.tw/download.html. If you install
+this module anyway, it won't be usable until the RRDs library won't be
+installed. Do you want to install this module anyway [Y/n]:
+EOT
+    my $answer = <>;
+    chomp($answer);
+    if($answer =~ /^n/i)
+    {
+        exit 1;
+    }
+}
 
 WriteMakefile
 (
@@ -24,7 +42,7 @@ WriteMakefile
  AUTHOR          => 'Olivier Poitrey <rs@mmania.com>',
  dist            =>
  {
-  DIST_DEFAULT   => 'README all checkout metafile sign tardist checkin',
+  DIST_DEFAULT   => 'README all changelog checkout metafile sign tardist checkin',
   COMPRESS       => 'gzip -9f',
  }
 );
@@ -43,6 +61,16 @@ q{
 README: rrdpoller Makefile
 	chmod +w $@
 	pod2text rrdpoller > $@
+
+changelog ::
+	@test $(shell head -1 debian/changelog|perl -pe 's/.*\(|\).*//g') == $(VERSION) || \
+  (echo "Versions mismatch between changelog and script"; false)
+	cvs tag V$(subst .,_,$(VERSION))
+	@echo "Tagging CVS"
+	@! cvs -q tag V$(subst .,_,$(VERSION))|grep -q ^W || \
+  (echo "Some files are already tagged with this version"; false)
+	# TODO: generate a changelog
+
 
 checkout ::
 	cvs up META.yml SIGNATURE README
